@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 
+const SITE_URL='https://losveld.vercel.app';
+
 export default function Login(){
  const router=useRouter();
  const [mode,setMode]=useState('login'); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [name,setName]=useState(''); const [msg,setMsg]=useState(''); const [busy,setBusy]=useState(false);
  async function submit(e){e.preventDefault();setBusy(true);setMsg('');
   if(mode==='signup'){
-   const {error}=await supabase.auth.signUp({email,password,options:{data:{display_name:name}}});
-   if(error)setMsg(error.message); else setMsg('Account aangemaakt. Controleer je e-mail als bevestiging aan staat.');
+   const {error}=await supabase.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:`${SITE_URL}/account`}});
+   if(error)setMsg(error.message); else setMsg('Account aangemaakt. Controleer je e-mail en bevestig je adres; daarna kom je automatisch terug bij Mijn LOS!.');
   }else{
    const {error}=await supabase.auth.signInWithPassword({email,password});
    if(error)setMsg(error.message); else router.push('/account');
