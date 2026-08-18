@@ -1,10 +1,16 @@
-import { Suspense } from 'react';
-import AccountClient from './AccountClient';
+'use client';
+import './account.css';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
+import { Dog, Star, ShieldCheck, BadgeCheck, AlertTriangle, Heart } from 'lucide-react';
 
-export default function AccountPage(){
-  return (
-    <Suspense fallback={<main><div className="wrap" style={{padding:'60px 0'}}>Mijn LOS! laden...</div></main>}>
-      <AccountClient />
-    </Suspense>
-  );
-}
+export default function Account(){
+ const router=useRouter(); const [user,setUser]=useState(null); const [profile,setProfile]=useState(null); const [dogs,setDogs]=useState([]); const [name,setName]=useState(''); const [breed,setBreed]=useState(''); const [sex,setSex]=useState('reu'); const [busy,setBusy]=useState(true);
+ async function load(){const {data:{user}}=await supabase.auth.getUser(); if(!user){router.push('/login');return;} setUser(user); const [{data:p},{data:d}]=await Promise.all([supabase.from('profiles').select('*').eq('id',user.id).single(),supabase.from('dogs').select('*').eq('owner_id',user.id).order('created_at')]); setProfile(p); setDogs(d||[]); setBusy(false);}
+ useEffect(()=>{load()},[]);
+ async function addDog(e){e.preventDefault(); if(!name)return; const {error}=await supabase.from('dogs').insert({owner_id:user.id,name,breed,sex}); if(!error){setName('');setBreed('');load();}}
+ async function logout(){await supabase.auth.signOut();router.push('/');}
+ if(busy)return <main><div className="wrap" style={{padding:'60px 0'}}>Mijn LOS! laden...</div></main>;
+ return <main><header className="nav wrap"><Link className="logo" href="/">LOS<span>!</span></Link><nav><Link href="/zoeken">Vind een LOS!</Link><Link href="/host">Verhuur je veld</Link><button className="ghost" onClick={logout}>Uitloggen</button></nav></header><section className="accountHero"><div className="wrap accountHeroGrid"><div><span className="kicker">MIJN LOS!</span><h1>Hoi {profile?.display_name||user?.email?.split('@')[0]}</h1><p>Beheer je honden, boekingen en reputatie op één plek.</p></div><div className="trustScore"><ShieldCheck/><div><small>LOS! Trustscore</small><strong>{Number(profile?.trust_score||5).toFixed(1).replace('.',',')}</strong><span>{profile?.account_status==='active'?'Account actief':'Accountstatus controleren'}</span></div></div></div></section><section className="wrap accountGrid"><div><h2 className="accountTitle">Mijn honden</h2>{dogs.map(d=><div className="profileCard" key={d.id}><div className="dogAvatar"><Dog/></div><div><span className="verified"><BadgeCheck size={15}/> Gekoppeld aan jouw account</span><h2>{d.name}</h2><p>{d.breed||'Ras niet ingevuld'} · {d.sex||'Onbekend'}</p>{d.notes&&<div className="dogTags"><span>{d.notes}</span></div>}</div></div>)}{dogs.length===0&&<div className="reviewCard"><strong>Nog geen hond toegevoegd.</strong><p>Voeg je hond toe zodat hosts weten wie er komt.</p></div>}<h2 className="accountTitle">Hond toevoegen</h2><form className="dogForm" onSubmit={addDog}><label>Naam<input value={name} onChange={e=>setName(e.target.value)} required/></label><label>Ras<input value={breed} onChange={e=>setBreed(e.target.value)} placeholder="Bijv. Labrador"/></label><label>Geslacht<select value={sex} onChange={e=>setSex(e.target.value)}><option value="reu">Reu</option><option value="teef">Teef</option></select></label><button className="bookNow">Hond toevoegen</button></form></div><aside><div className="sideCard"><h3>Jouw reputatie</h3><div className="scoreBig"><Star fill="currentColor"/> {Number(profile?.trust_score||5).toFixed(1).replace('.',',')}</div><p>Je reputatie groeit automatisch op basis van beoordelingen na echte boekingen.</p><div className="safeStatus"><ShieldCheck/> {profile?.account_status==='active'?'Geen actieve beperkingen':'Accountreview actief'}</div></div><div className="sideCard"><h3>Hoe vertrouwen werkt</h3><p>Hosts en hondeneigenaren beoordelen elkaar na een boeking. Incidentmeldingen worden apart beoordeeld en kunnen leiden tot waarschuwingen of beperkingen.</p><div className="incidentInfo"><AlertTriangle/><span>Één slechte review veroorzaakt dus niet automatisch een ban.</span></div></div><div className="sideCard"><Heart/><h3>Favorieten</h3><p>Favorieten koppelen we in de volgende slag aan je account.</p></div></aside></section></main>}
